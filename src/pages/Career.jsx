@@ -71,7 +71,7 @@ export default function Career() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-3 bg-brand-primary text-white px-8 py-5 rounded-xl font-bold text-lg hover:bg-brand-accent hover:shadow-xl hover:shadow-brand-primary/30 hover:-translate-y-1 transition-all duration-300"
             >
-              Cek Lowongan & Ikuti Tes <FiExternalLink size={22} />
+              Cek Lowongan Pekerjaan <FiExternalLink size={22} />
             </a>
             
             <p className="text-sm text-gray-400 mt-6">

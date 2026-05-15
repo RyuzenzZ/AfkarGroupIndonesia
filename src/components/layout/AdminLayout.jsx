@@ -1,49 +1,78 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
+import { FiMenu } from 'react-icons/fi';
 
 export default function AdminLayout() {
   const { user, loading } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // 1. TAMPILAN JIKA SEDANG LOADING
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white font-bold text-xl">
-        SEDANG MEMBACA KARTU ID DARI FIREBASE... MOHON TUNGGU...
+      <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm font-medium tracking-widest uppercase">Memuat sistem...</p>
+        </div>
       </div>
     );
   }
 
-  // 2. TAMPILAN DIAGNOSA JIKA KARTU ID KOSONG (Ini yang biasanya menendang Anda secara diam-diam)
   if (!user) {
     return (
       <div className="min-h-screen bg-red-50 flex items-center justify-center p-6">
-        <div className="max-w-xl bg-white p-10 rounded-3xl shadow-xl border-2 border-red-500">
-          <h1 className="text-3xl font-black text-red-600 mb-4">🚨 STOP! DIAGNOSA ERROR</h1>
-          <p className="text-gray-700 mb-6 font-medium">
-            Anda berhasil login di form, tetapi saat berpindah ke halaman ini, sistem membaca bahwa KARTU ID Anda <span className="font-bold text-red-600">KOSONG (null)</span>. Ini berarti memori state React Anda bocor atau AuthProvider Anda tidak terpasang dengan benar di file utama (main.jsx).
+        <div className="max-w-md bg-white p-10 rounded-3xl shadow-xl border-2 border-red-500 text-center">
+          <div className="text-5xl mb-4">🔐</div>
+          <h1 className="text-2xl font-black text-red-600 mb-3">Sesi Habis</h1>
+          <p className="text-gray-600 mb-6 text-sm leading-relaxed">
+            Sesi login Anda tidak ditemukan. Silakan login kembali untuk mengakses panel admin.
           </p>
-          
-          <div className="bg-gray-900 text-green-400 p-6 rounded-xl font-mono text-sm mb-8">
-            <p>{`> Status Loading : ${loading ? 'Aktif' : 'Selesai'}`}</p>
-            <p>{`> Status User    : ${user ? 'Ditemukan' : 'KOSONG / TIDAK TERBACA'}`}</p>
-          </div>
-
-          <Link to="/admin/login" className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl w-full block text-center">
-            Kembali ke Halaman Login
+          <Link
+            to="/admin/login"
+            className="inline-block bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl transition-colors"
+          >
+            Login Kembali
           </Link>
         </div>
       </div>
     );
   }
 
-  // 3. JIKA BERHASIL (Normal)
   return (
-    <div className="flex min-h-screen bg-gray-50 font-body overflow-x-hidden">
-      <Sidebar />
-      <main className="flex-1 ml-64 p-8 md:p-10 w-[calc(100%-16rem)] min-h-screen overflow-y-auto">
-        <Outlet />
+    <div className="flex min-h-screen bg-gray-50 font-body">
+      {/* Overlay mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`fixed top-0 left-0 h-full z-40 transform transition-transform duration-300
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+        <Sidebar onClose={() => setSidebarOpen(false)} />
+      </div>
+
+      {/* Main Content */}
+      <main className="flex-1 md:ml-64 min-h-screen overflow-y-auto">
+        {/* Topbar mobile */}
+        <div className="md:hidden flex items-center gap-4 px-5 py-4 bg-white border-b border-gray-200 sticky top-0 z-20">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+          >
+            <FiMenu size={20} />
+          </button>
+          <span className="text-lg font-heading font-extrabold tracking-widest">
+            AFKAR <span className="text-red-600">ADMIN</span>
+          </span>
+        </div>
+
+        <div className="p-6 md:p-10">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

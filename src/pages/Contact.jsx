@@ -62,7 +62,7 @@ export default function Contact() {
                     </div>
                     <div>
                       <p className="font-bold mb-1">Telepon & WhatsApp</p>
-                      <p className="text-gray-400 text-base">+62 812-3456-7890</p>
+                      <p className="text-gray-400 text-base">+62 857-0521-8281</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-4 text-lg">
@@ -71,7 +71,7 @@ export default function Contact() {
                     </div>
                     <div>
                       <p className="font-bold mb-1">Email Resmi</p>
-                      <p className="text-gray-400 text-base">halo@afkarland.com</p>
+                      <p className="text-gray-400 text-base">Afkargroupindonesia@gmail.com</p>
                     </div>
                   </div>
                 </div>

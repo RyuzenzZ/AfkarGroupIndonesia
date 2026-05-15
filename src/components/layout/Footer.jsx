@@ -28,7 +28,7 @@ export default function Footer() {
             <h3 className="text-white font-heading font-semibold text-lg mb-6">Kontak</h3>
             <ul className="space-y-4 text-sm">
               <li className="flex items-start gap-3"><FiMapPin className="text-brand-primary mt-1 shrink-0" size={18} /><span>Makassar, Indonesia</span></li>
-              <li className="flex items-center gap-3"><FiPhone className="text-brand-primary shrink-0" size={18} /><span>+62 812-3456-7890</span></li>
+              <li className="flex items-center gap-3"><FiPhone className="text-brand-primary shrink-0" size={18} /><span>+62 857-0521-8281</span></li>
             </ul>
           </div>
         </div>

@@ -23,12 +23,12 @@ export default function Navbar() {
   }, [location.pathname]);
 
   const navLinks = [
-    { name: 'Beranda', path: '/' },
-    { name: 'Tentang Kami', path: '/tentang-kami' },
-    { name: 'Proyek', path: '/proyek' },
-    { name: 'Artikel', path: '/artikel' },
-    { name: 'Karir', path: '/karir' },
-    { name: 'Kontak', path: '/kontak' },
+    { name: 'Home', path: '/' },
+    { name: 'About Me', path: '/tentang-kami' },
+    { name: 'Project', path: '/proyek' },
+    { name: 'Article', path: '/artikel' },
+    { name: 'Career', path: '/karir' },
+    { name: 'Contact', path: '/kontak' },
   ];
 
   return (
@@ -43,8 +43,8 @@ export default function Navbar() {
         <Link to="/" className="flex items-center gap-3 hover:scale-105 transition-transform shrink-0">
           <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center overflow-hidden shadow-sm">
             <img
-              src="https://placehold.co/150x150/DC2626/FFFFFF?text=AL"
-              alt="Logo AFKAR LAND"
+              src="/images/LogoAfkar.png"
+              alt="LogoAfkar.png"
               className="w-full h-full object-cover"
             />
           </div>
