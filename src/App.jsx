@@ -31,6 +31,7 @@ import ManageMessages from './pages/admin/ManageMessages';
 import ManageApplications from './pages/admin/ManageApplications';
 import ManageArticles from './pages/admin/ManageArticles';
 import ManageProjects from './pages/admin/ManageProjects';
+import ManageUnits from './pages/admin/ManageUnits';
 
 export default function App() {
   // STATE UNTUK ANIMASI LOADER
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="applications" element={<ManageApplications />} />
           <Route path="articles" element={<ManageArticles />} /> 
           <Route path="projects" element={<ManageProjects />} />
+          <Route path="units" element={<ManageUnits />} />
      
         </Route>
 

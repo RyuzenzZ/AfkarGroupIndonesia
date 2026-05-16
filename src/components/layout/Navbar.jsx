@@ -24,7 +24,7 @@ export default function Navbar() {
 
   const navLinks = [
     { name: 'Home', path: '/' },
-    { name: 'About Me', path: '/tentang-kami' },
+    { name: 'About', path: '/tentang-kami' },
     { name: 'Project', path: '/proyek' },
     { name: 'Article', path: '/artikel' },
     { name: 'Career', path: '/karir' },
