@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -9,6 +9,8 @@ import {
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { createLead } from '../services/firestoreService';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../config/firebaseConfig';
 
 // ─────────────────────────────────────────────────────────────
 // CANVAS 1 — DATA LAYER LENGKAP
@@ -105,126 +107,7 @@ const progressDefault = [
   { fase: 'Fase 4', label: 'Finishing',  persen: 0,   status: 'rencana', tgl: 'Des 2024', ket: 'Finishing, landscaping & serah terima unit' },
 ];
 
-// LOGIKA: Data per proyek — idealnya fetch dari Firestore
-const projectData = {
-  'masagena-green-hills': {
-    name: 'Masagena Green Hills',
-    tagline: 'Hunian Asri Bernuansa Hijau di Gowa',
-    location: 'Pattallassang, Kab. Gowa',
-    locationDetail: 'Timbusseng, Borongpa\'la\'la, Kec. Pattallassang, Kabupaten Gowa (Dekat Kampus teknik Unhas Gowa & Puncak Bollangi)',
-    status: 'Tersedia',
-    harga: 'Mulai Rp 171,8 Juta',
-    // LOGIKA: Harga sesuai Product Knowledge terbaru (sudah naik Rp 3.000.000)
-    tipeUnit: [
-      { tipe: 'Tipe 24/72', lantai: '1 Lantai', kamar: '1 Kamar Tidur', normal: 'Rp 232.568.000', cashKeras: 'Rp 171.800.000', cashLunak: 'Rp 178.552.000' },
-      { tipe: 'Tipe 36/72', lantai: '1 Lantai', kamar: '2 Kamar Tidur', normal: 'Rp 306.283.099', cashKeras: 'Rp 226.002.279', cashLunak: 'Rp 234.922.370' },
-      { tipe: 'Tipe 42/78', lantai: '1 Lantai', kamar: '2 Kamar Tidur', normal: 'Rp 352.135.800', cashKeras: 'Rp 259.717.500', cashLunak: 'Rp 269.986.200' },
-      { tipe: 'Tipe 60/78', lantai: '2 Lantai', kamar: '3 Kamar Tidur', normal: 'Rp 625.501.784', cashKeras: 'Rp 460.721.900', cashLunak: 'Rp 479.030.776' },
-    ],
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80',
-    gallery: [
-      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=1200',
-    ],
-    about: 'Masagena Green Hills hadir sebagai solusi hunian syariah modern di perbukitan Gowa yang nyaman dan strategis. Terletak dekat Kampus Teknik unhas gowa dan Puncak Bollangi, kawasan ini menawarkan udara sejuk, lingkungan Islami, dan akses mudah ke berbagai fasilitas kota.',
-    aboutExtra: 'Dengan sistem transaksi syariah tanpa bank, tanpa riba, tanpa denda, dan tanpa BI Checking — Masagena Green Hills menjadi pilihan cerdas untuk hunian pertama maupun investasi jangka panjang keluarga Anda.',
-    brosurUrl: '/brosur/masagena-green-hills.pdf',
-    brosurFileName: 'Brosur-Masagena-Green-Hills.pdf',
-    brosurSize: '2.4 MB',
-    websiteUrl: 'https://masagena.afkarland.id',
-    // LOGIKA: Masagena — Marketing Executive: Damar & Fila
-    marketingIds: ['damar', 'fila'],
-    faq: faqDefault,
-  },
-  'wotu-islamic-village': {
-    name: 'Wotu Islamic Village',
-    tagline: 'Kawasan Islami Terpadu Pertama di Luwu Timur',
-    location: 'Wotu, Kab. Luwu Timur',
-    locationDetail: 'Jl. Pahlawan Arolipu, Wotu, Kab. Luwu Timur (Depan SMAN 2 Luwu Timur)',
-    status: 'Tersedia',
-    harga: 'Mulai Rp 71 Juta',
-    // LOGIKA: Harga sesuai Product Knowledge update 30 Desember 2025
-    tipeUnit: [
-      { tipe: 'Kavling 6×14 (91 m²)', lantai: 'Tanah Kosong', kamar: '-', normal: 'Rp 93.720.000', cashKeras: 'Rp 71.000.000', cashLunak: 'Rp 75.970.000' },
-      { tipe: 'Kavling 7×14 (98 m²)', lantai: 'Tanah Kosong', kamar: '-', normal: 'Rp 100.320.000', cashKeras: 'Rp 76.000.000', cashLunak: 'Rp 79.040.000' },
-      { tipe: 'Rumah Tipe 20/91', lantai: '1 Lantai', kamar: '1 Kamar Tidur', normal: 'Rp 225.598.400', cashKeras: 'Rp 155.800.000', cashLunak: 'Rp 162.032.000' },
-      { tipe: 'Rumah Tipe 42/91', lantai: '1 Lantai', kamar: '2 Kamar Tidur', normal: 'Rp 344.624.000', cashKeras: 'Rp 238.000.000', cashLunak: 'Rp 247.520.000' },
-      { tipe: 'Rumah Tipe 60/98', lantai: '2 Lantai', kamar: '3 Kamar Tidur', normal: 'Rp 449.604.000', cashKeras: 'Rp 310.500.000', cashLunak: 'Rp 322.920.000' },
-    ],
-    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80',
-    gallery: [
-      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&q=80&w=1200',
-    ],
-    about: 'Wotu Islamic Village adalah kawasan hunian islami terpadu pertama di Luwu Timur yang mengintegrasikan fasilitas ibadah, pendidikan agama, dan kehidupan bertetangga yang Islami dalam satu kawasan terencana.',
-    aboutExtra: 'Tersedia pilihan kavling dan rumah dengan harga mulai 79 jutaan. Dengan sistem syariah tanpa bank, tanpa riba, tanpa BI Checking — cocok untuk hunian maupun investasi di kawasan timur Sulawesi Selatan yang terus berkembang.',
-    brosurUrl: '/brosur/wotu-islamic-village.pdf',
-    brosurFileName: 'Brosur-Wotu-Islamic-Village.pdf',
-    brosurSize: '2.1 MB',
-    websiteUrl: 'https://wotu.afkarland.id',
-    // LOGIKA: Wotu — Marketing Executive: Hazfira
-    marketingIds: ['hazfira'],
-    faq: faqDefault,
-  },
-  'hasanah-panakkukang': {
-    name: 'The Hasanah Panakkukang',
-    tagline: 'Hunian Premium 2 Lantai di Jantung Makassar — Sisa 2 Unit!',
-    location: 'Panakkukang, Makassar',
-    locationDetail: 'Kompleks PAM, Jl. Penjernihan Raya III, Panakkukang, Makassar',
-    // LOGIKA: Hanya tersisa 2 unit dari total 5 unit (A-01 s/d A-05)
-    status: 'Sisa Sedikit',
-    harga: 'Mulai Rp 1,299 Miliar',
-    tipeUnit: [
-      { tipe: 'Tipe 70/82 (2 Lantai)', lantai: '2 Lantai', kamar: '3 KT + 2 KM + Toilet', normal: 'Rp 1.399.000.000', cashKeras: 'Rp 1.299.000.000 (Harga Promo)', cashLunak: 'DP 50% = Rp 699.500.000 (angsuran s/d 3 tahun ke developer)' },
-    ],
-    image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&q=80',
-    gallery: [
-      'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&q=80&w=1200',
-    ],
-    about: 'The Hasanah Panakkukang adalah hunian premium 2 lantai yang berlokasi di kawasan paling strategis Kota Makassar. Dengan luas bangunan 70 m² di atas lahan 81 m², unit ini cocok untuk keluarga yang menginginkan ruang luas di tengah kota.',
-    aboutExtra: '⚠️ SISA 2 UNIT dari total 5 unit eksklusif! Tersedia opsi Harga Promo Rp 1,299 M atau DP 50% = Rp 699,5 juta dengan angsuran hingga 3 tahun langsung ke developer — tanpa bank, tanpa riba, tanpa sita. Fasilitas lengkap: Free AC, CCTV, Tandon Air, Pemecahan Sertifikat, Balik Nama, dan Free Umrah.',
-    brosurUrl: '/brosur/hasanah-panakkukang.pdf',
-    brosurFileName: 'Brosur-Hasanah-Panakkukang.pdf',
-    brosurSize: '1.9 MB',
-    websiteUrl: 'https://hasanah.afkarland.id',
-    // LOGIKA: The Hasanah — Marketing Executive: Damar & Fila
-    marketingIds: ['damar', 'fila'],
-    faq: faqDefault,
-  },
-  'afkar-madani-estate': {
-    name: 'Afkar Madani Estate',
-    tagline: '🚀 Grand Launching 7 Juni 2026 — Premium · Eksklusif · Syariah',
-    location: 'BTP, Makassar',
-    locationDetail: 'AFKAR MADANI ESTATE BTP, Makassar — Grand Launching 7 Juni 2026',
-    status: 'Coming Soon',
-    harga: 'Segera Diumumkan di Grand Launching',
-    tipeUnit: [],
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80',
-    gallery: [
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?auto=format&fit=crop&q=80&w=1200',
-    ],
-    about: 'Afkar Madani Estate hadir sebagai perumahan syariah premium eksklusif terbaru dari AFKAR LAND, berlokasi di kawasan BTP Makassar. Dirancang untuk keluarga yang menginginkan hunian berkelas dengan infrastruktur modern dan keamanan 24 jam.',
-    aboutExtra: '📅 MARK YOUR CALENDAR! Grand Launching resmi Afkar Madani Estate akan diselenggarakan pada 7 Juni 2026. Daftarkan minat Anda sekarang dan jadilah yang pertama mendapat penawaran Early Bird eksklusif sebelum acara launching!',
-    brosurUrl: '/brosur/afkar-madani-estate.pdf',
-    brosurFileName: 'Brosur-Afkar-Madani-Estate.pdf',
-    brosurSize: '2.7 MB',
-    websiteUrl: 'https://afkarmadani.afkarland.id',
-    // LOGIKA: Afkar Madani Estate — Marketing Executive: Erni & Ayu
-    marketingIds: ['erni', 'ayu'],
-    faq: faqDefault,
-  },
-};
+
 
 function triggerDownload(url, fileName, name) {
   const link = document.createElement('a');
@@ -242,70 +125,264 @@ function triggerDownload(url, fileName, name) {
 // ─────────────────────────────────────────────────────────────
 
 // ── Gallery Carousel ──
+// ✅ Fitur: object-contain (no crop), auto-scroll + pause on hover,
+//           swipe gesture mobile/tablet, progress bar, responsive
+const AUTO_PLAY_DELAY = 4000; // ms
+
 function GallerySection({ images, projectName }) {
-  const [current, setCurrent] = useState(0);
-  const prev = () => setCurrent(c => (c - 1 + images.length) % images.length);
-  const next = () => setCurrent(c => (c + 1) % images.length);
+  const [current, setCurrent]   = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [progress, setProgress]  = useState(0);
+  const [direction, setDirection] = useState(1); // 1 = next, -1 = prev
+
+  // Touch swipe state
+  const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
+
+  // Auto-play interval & progress ticker
+  const intervalRef  = useRef(null);
+  const progressRef  = useRef(null);
+  const progressVal  = useRef(0);
+
+  const total = images.length;
+
+  const goTo = useCallback((idx, dir = 1) => {
+    setDirection(dir);
+    setCurrent(idx);
+    // Reset progress
+    progressVal.current = 0;
+    setProgress(0);
+  }, []);
+
+  const next = useCallback(() => goTo((current + 1) % total, 1),  [current, total, goTo]);
+  const prev = useCallback(() => goTo((current - 1 + total) % total, -1), [current, total, goTo]);
+
+  // ── Auto-play ticker ──
+  const startAutoPlay = useCallback(() => {
+    clearInterval(intervalRef.current);
+    clearInterval(progressRef.current);
+    progressVal.current = 0;
+    setProgress(0);
+
+    // Progress bar: tick every 50ms → 100% in AUTO_PLAY_DELAY
+    progressRef.current = setInterval(() => {
+      progressVal.current += (50 / AUTO_PLAY_DELAY) * 100;
+      setProgress(Math.min(progressVal.current, 100));
+    }, 50);
+
+    // Advance slide
+    intervalRef.current = setInterval(() => {
+      setCurrent(c => (c + 1) % total);
+      setDirection(1);
+      progressVal.current = 0;
+      setProgress(0);
+    }, AUTO_PLAY_DELAY);
+  }, [total]);
+
+  const stopAutoPlay = useCallback(() => {
+    clearInterval(intervalRef.current);
+    clearInterval(progressRef.current);
+    setProgress(0);
+    progressVal.current = 0;
+  }, []);
+
+  useEffect(() => {
+    if (isPlaying) startAutoPlay();
+    else stopAutoPlay();
+    return stopAutoPlay;
+  }, [isPlaying, startAutoPlay, stopAutoPlay, current]);
+
+  // ── Touch / Swipe handlers ──
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    // Hanya proses swipe horizontal (bukan scroll vertikal)
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      if (dx < 0) { next(); } else { prev(); }
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  // Framer motion variants berdasarkan arah slide
+  const variants = {
+    enter:  (dir) => ({ opacity: 0, x: dir > 0 ? 60 : -60 }),
+    center: { opacity: 1, x: 0 },
+    exit:   (dir) => ({ opacity: 0, x: dir > 0 ? -60 : 60 }),
+  };
 
   return (
-    <div className="space-y-3">
-      {/* MAIN IMAGE */}
-      <div className="relative aspect-[16/9] rounded-2xl overflow-hidden group bg-[#111]">
-        <AnimatePresence mode="wait">
-          <motion.img
-            key={current}
-            src={images[current]}
-            alt={`${projectName} ${current + 1}`}
-            className="w-full h-full object-cover"
-            initial={{ opacity: 0, scale: 1.03 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
+    <div className="space-y-3 select-none">
+
+      {/* ── MAIN SLIDE AREA ── */}
+      <div
+        className="relative w-full rounded-2xl overflow-hidden bg-[#0d0d0d] border border-white/6 group"
+        style={{ minHeight: '220px' }}
+        onMouseEnter={() => setIsPlaying(false)}
+        onMouseLeave={() => setIsPlaying(true)}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Gambar — object-contain agar tidak terpotong */}
+        {/* 
+          Tinggi container: 
+            - Mobile  : max 60vw (landscape akan penuh, portrait tidak terpotong)
+            - Tablet  : 420px
+            - Desktop : 520px
+        */}
+        <div className="w-full flex items-center justify-center"
+          style={{
+            height: 'clamp(220px, 52vw, 520px)',
+          }}
+        >
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.img
+              key={current}
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.38, ease: [0.25, 0.1, 0.25, 1] }}
+              src={images[current]}
+              alt={`${projectName} ${current + 1}`}
+              draggable={false}
+              className="w-full h-full object-contain"
+              style={{ position: 'absolute', inset: 0 }}
+            />
+          </AnimatePresence>
+        </div>
+
+        {/* Gradient bawah — untuk readability teks counter */}
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+
+        {/* ── AUTO-PLAY PROGRESS BAR ── */}
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-white/10">
+          <div
+            className="h-full bg-[#C9A84C] transition-none"
+            style={{ width: `${progress}%` }}
           />
-        </AnimatePresence>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+        </div>
 
-        {/* ARROWS */}
-        <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/50 hover:bg-[#C9A84C] backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 opacity-0 group-hover:opacity-100">
-          <FiArrowLeft size={16} />
-        </button>
-        <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/50 hover:bg-[#C9A84C] backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-300 opacity-0 group-hover:opacity-100">
-          <FiArrowRight size={16} />
+        {/* ── ARROW PREV ──
+            Desktop: opacity-0 → opacity-100 on hover
+            Mobile : selalu tampil (opacity-100) */}
+        <button
+          onClick={prev}
+          className="
+            absolute left-3 top-1/2 -translate-y-1/2
+            w-9 h-9 md:w-10 md:h-10
+            bg-black/60 hover:bg-[#C9A84C] backdrop-blur-sm
+            rounded-full flex items-center justify-center text-white hover:text-black
+            transition-all duration-300
+            opacity-100 md:opacity-0 md:group-hover:opacity-100
+            shadow-lg
+          "
+          aria-label="Foto sebelumnya"
+        >
+          <FiArrowLeft size={15} />
         </button>
 
-        {/* COUNTER */}
-        <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
-          {current + 1} / {images.length}
+        {/* ── ARROW NEXT ── */}
+        <button
+          onClick={next}
+          className="
+            absolute right-3 top-1/2 -translate-y-1/2
+            w-9 h-9 md:w-10 md:h-10
+            bg-black/60 hover:bg-[#C9A84C] backdrop-blur-sm
+            rounded-full flex items-center justify-center text-white hover:text-black
+            transition-all duration-300
+            opacity-100 md:opacity-0 md:group-hover:opacity-100
+            shadow-lg
+          "
+          aria-label="Foto berikutnya"
+        >
+          <FiArrowRight size={15} />
+        </button>
+
+        {/* ── COUNTER + PLAY/PAUSE ── */}
+        <div className="absolute bottom-3 left-0 right-0 flex items-center justify-between px-4 pointer-events-none">
+          {/* Counter */}
+          <div className="bg-black/55 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+            {current + 1} / {total}
+          </div>
+          {/* Play / Pause */}
+          <button
+            onClick={() => setIsPlaying(p => !p)}
+            className="
+              pointer-events-auto
+              bg-black/55 backdrop-blur-sm text-white
+              text-[10px] font-bold px-2.5 py-1 rounded-full
+              flex items-center gap-1.5
+              hover:bg-[#C9A84C]/80 hover:text-black
+              transition-all duration-200
+            "
+            aria-label={isPlaying ? 'Pause auto-scroll' : 'Play auto-scroll'}
+          >
+            {isPlaying
+              ? <><span className="flex gap-0.5"><span className="w-0.5 h-2.5 bg-current rounded-full"/><span className="w-0.5 h-2.5 bg-current rounded-full"/></span> Auto</>
+              : <><span className="w-0 h-0 border-t-[5px] border-b-[5px] border-l-[8px] border-transparent border-l-current ml-0.5" /> Play</>
+            }
+          </button>
+        </div>
+
+        {/* ── SWIPE HINT — hanya muncul di layar sentuh ── */}
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 md:hidden pointer-events-none">
+          <span className="text-white/30 text-[9px] font-medium tracking-widest uppercase">
+            ← geser →
+          </span>
         </div>
       </div>
 
-      {/* THUMBNAILS */}
-      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-        {images.map((img, i) => (
-          <button
-            key={i}
-            onClick={() => setCurrent(i)}
-            className={`shrink-0 w-16 h-12 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-              i === current ? 'border-[#C9A84C]' : 'border-white/10 opacity-60 hover:opacity-90'
-            }`}
-          >
-            <img src={img} alt="" className="w-full h-full object-cover" />
-          </button>
-        ))}
-      </div>
-
-      {/* DOT INDICATORS */}
-      <div className="flex justify-center gap-1.5">
+      {/* ── DOT INDICATORS ── */}
+      <div className="flex justify-center gap-1.5 py-0.5">
         {images.map((_, i) => (
           <button
             key={i}
-            onClick={() => setCurrent(i)}
+            onClick={() => goTo(i, i > current ? 1 : -1)}
             className={`rounded-full transition-all duration-300 ${
-              i === current ? 'w-5 h-1.5 bg-[#C9A84C]' : 'w-1.5 h-1.5 bg-white/20 hover:bg-white/40'
+              i === current
+                ? 'w-6 h-1.5 bg-[#C9A84C]'
+                : 'w-1.5 h-1.5 bg-white/20 hover:bg-white/50'
             }`}
+            aria-label={`Foto ${i + 1}`}
           />
         ))}
       </div>
+
+      {/* ── STRIP THUMBNAIL ── */}
+      {images.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {images.map((img, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i, i > current ? 1 : -1)}
+              className={`
+                shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-200
+                ${i === current
+                  ? 'border-[#C9A84C] opacity-100 scale-105'
+                  : 'border-white/8 opacity-45 hover:opacity-80 hover:border-white/30'
+                }
+              `}
+              style={{ width: 'clamp(56px, 10vw, 80px)', height: 'clamp(40px, 7vw, 56px)' }}
+              aria-label={`Lihat foto ${i + 1}`}
+            >
+              <img
+                src={img}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+
     </div>
   );
 }
@@ -485,26 +562,82 @@ function StickyFloatingCTA({ project, selectedMk }) {
 
 export default function ProjectDetail() {
   const { slug } = useParams();
+  const [proj, setProj] = useState(null);
+  const [loadingProj, setLoadingProj] = useState(true);
   const [selectedMkId, setSelectedMkId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const proj = projectData[slug] || projectData['masagena-green-hills'];
-  const teamIds = proj.marketingIds || ['damar', 'fila', 'hazfira', 'erni', 'ayu'];
-  const team = allMarketing.filter(m => teamIds.includes(m.id));
-  const selectedMk = team.find(m => m.id === selectedMkId) || null;
-
   const [form, setForm] = useState({
     nama: '', nomorWa: '', email: '',
-    pilihanProject: proj.name,
+    pilihanProject: '',
     pilihanMarketing: '',
     tujuanPembelian: '',
     pesan: ''
   });
 
+  // ── FETCH PROJECT DARI FIRESTORE BERDASARKAN SLUG ──
+  useEffect(() => {
+    const fetchProject = async () => {
+      try {
+        const q = query(collection(db, 'projects'), where('slug', '==', slug));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          setProj({ id: snap.docs[0].id, ...snap.docs[0].data() });
+        }
+      } catch (err) {
+        console.error('Error fetching project:', err);
+      } finally {
+        setLoadingProj(false);
+      }
+    };
+    fetchProject();
+  }, [slug]);
+
+  // ✅ FIX: useEffect ini WAJIB di atas semua conditional return
+  //    (React Rules of Hooks — jumlah hook harus sama di setiap render)
   // LOGIKA: Sinkron pilihan marketing antara grid dan form select
   useEffect(() => {
     if (selectedMkId) setForm(prev => ({ ...prev, pilihanMarketing: selectedMkId }));
   }, [selectedMkId]);
+
+  // ── LOADING STATE ──
+  if (loadingProj) {
+    return (
+      <div className="w-full bg-[#080808] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white/40 text-sm">Memuat data project...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── NOT FOUND ──
+  if (!proj) {
+    return (
+      <div className="w-full bg-[#080808] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-white/40 text-sm mb-4">Project tidak ditemukan.</p>
+          <Link to="/proyek" className="text-[#C9A84C] font-bold text-sm hover:underline">← Kembali ke Semua Project</Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Merge fallback untuk FAQ dan Progress jika belum diisi di admin
+  // ✅ SYNC: gallery fallback ke [proj.image] — konsisten dengan Projects.jsx yang pakai field image
+  const projWithFallback = {
+    faq: faqDefault,
+    progress: progressDefault,
+    tipeUnit: [],
+    gallery: [proj.image].filter(Boolean),
+    ...proj,
+  };
+  // Alias untuk kompatibilitas kode di bawah
+  Object.assign(proj, projWithFallback);
+
+  const teamIds = proj.marketingIds || ['damar', 'fila', 'hazfira', 'erni', 'ayu'];
+  const team = allMarketing.filter(m => teamIds.includes(m.id));
+  const selectedMk = team.find(m => m.id === selectedMkId) || null;
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -526,7 +659,7 @@ export default function ProjectDetail() {
         `Assalamu'alaikum Kak ${targetMk.name} 👋\n\nNama: *${form.nama}*\nProject: *${proj.name}*\nTujuan: ${form.tujuanPembelian}\n\nSaya telah mengisi form konsultasi. Mohon dibantu ya 🙏`
       );
       setTimeout(() => { window.open(`https://wa.me/${targetMk.wa}?text=${msg}`, '_blank'); }, 1200);
-      setForm({ nama: '', nomorWa: '', email: '', pilihanProject: proj.name, pilihanMarketing: '', tujuanPembelian: '', pesan: '' });
+      setForm({ nama: '', nomorWa: '', email: '', pilihanProject: proj.name || '', pilihanMarketing: '', tujuanPembelian: '', pesan: '' });
       setSelectedMkId(null);
     } catch {
       toast.error('❌ Terjadi kesalahan. Silakan coba lagi.');

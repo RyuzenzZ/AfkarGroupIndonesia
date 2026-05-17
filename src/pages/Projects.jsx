@@ -1,12 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   FiMapPin, FiArrowRight, FiShield, FiHome, FiTrendingUp,
   FiDownload, FiChevronRight, FiStar, FiNavigation,
-  FiCheckCircle, FiFilter
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '../config/firebaseConfig';
 
 // ─────────────────────────────────────────────────────────────
 // CANVAS 1 — KONSTANTA & DATA LAYER
@@ -27,109 +28,13 @@ function getBadgeClass(badge) {
     case 'BEST SELLER':             return 'bg-brand-primary text-white';
     case 'COMING SOON':             return 'bg-gray-700 text-white/80';
     case 'LAUNCHING JUNI':          return 'bg-purple-700 text-white';
-    case 'BEST PREMIUM LOCATION':   return 'bg-[#C9A84C] text-black';  // LOGIKA: Gold premium untuk Hasanah
+    case 'BEST PREMIUM LOCATION':   return 'bg-[#C9A84C] text-black';
     default:                        return 'bg-brand-primary text-white';
   }
 }
 
-// LOGIKA: Data proyek — idealnya fetch dari Firestore collection 'projects'
-// Admin bisa menambah/menghapus/mengubah urutan melalui panel admin
-const projects = [
-  {
-    slug: 'masagena-green-hills',
-    name: 'Masagena Green Hills',
-    desc: 'Hunian syariah asri di perbukitan Gowa — dekat Kampus Unismuh & Puncak Bollangi. Mulai Tipe 24 s/d 60, tanpa bank, tanpa riba.',
-    location: 'Pattallassang, Kab. Gowa',
-    locationDetail: 'Timbusseng, Borongpa\'la\'la, Kec. Pattallassang, Kabupaten Gowa (Dekat Kampus Unismuh & Puncak Bollangi)',
-    // LOGIKA: status 'Tersedia' — unit masih banyak tersedia
-    status: 'Tersedia',
-    badge: 'BEST SELLER',
-    statusLabel: 'Unit Tersedia',
-    // LOGIKA: Harga cash keras tipe 24/72 sesuai Product Knowledge terbaru
-    harga: 'Mulai Rp 171,8 Juta',
-    tipeUnit: [
-      { tipe: 'Tipe 24/72', lantai: '1 Lantai', kamar: '1 Kamar Tidur', normal: 'Rp 232.568.000', cashKeras: 'Rp 171.800.000', cashLunak: 'Rp 178.552.000' },
-      { tipe: 'Tipe 36/72', lantai: '1 Lantai', kamar: '2 Kamar Tidur', normal: 'Rp 306.283.099', cashKeras: 'Rp 226.002.279', cashLunak: 'Rp 234.922.370' },
-      { tipe: 'Tipe 42/78', lantai: '1 Lantai', kamar: '2 Kamar Tidur', normal: 'Rp 352.135.800', cashKeras: 'Rp 259.717.500', cashLunak: 'Rp 269.986.200' },
-      { tipe: 'Tipe 60/78', lantai: '2 Lantai', kamar: '3 Kamar Tidur', normal: 'Rp 625.501.784', cashKeras: 'Rp 460.721.900', cashLunak: 'Rp 479.030.776' },
-    ],
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80',
-    brosurUrl: '/assets/brosur/masagena-green-hills.pdf',
-    brosurFileName: 'Brosur-Masagena-Green-Hills.pdf',
-    features: ['Area Berkembang', 'Lingkungan Islami', 'Dekat Unismuh', 'Cocok Investasi'],
-    order: 1,
-    isFeatured: true,
-  },
-  {
-    slug: 'wotu-islamic-village',
-    name: 'Wotu Islamic Village',
-    desc: 'Kawasan islami terpadu pertama di Luwu Timur — rumah & kavling syariah, tanpa riba, tanpa bank. Mulai 71 jutaan.',
-    location: 'Wotu, Kab. Luwu Timur',
-    locationDetail: 'Jl. Pahlawan Arolipu, Wotu, Kab. Luwu Timur (Depan SMAN 2 Luwu Timur)',
-    // LOGIKA: status 'Tersedia' — unit masih banyak tersedia
-    status: 'Tersedia',
-    badge: 'BEST SELLER',
-    statusLabel: 'Unit Tersedia',
-    // LOGIKA: Harga cash keras kavling 91 m² sesuai Product Knowledge
-    harga: 'Mulai Rp 71 Juta',
-    tipeUnit: [
-      { tipe: 'Kavling 6×14 (91 m²)', lantai: 'Tanah Kosong', kamar: '-', normal: 'Rp 93.720.000', cashKeras: 'Rp 71.000.000', cashLunak: 'Rp 75.970.000' },
-      { tipe: 'Kavling 7×14 (98 m²)', lantai: 'Tanah Kosong', kamar: '-', normal: 'Rp 100.320.000', cashKeras: 'Rp 76.000.000', cashLunak: 'Rp 79.040.000' },
-      { tipe: 'Rumah Tipe 20/91', lantai: '1 Lantai', kamar: '1 Kamar Tidur', normal: 'Rp 225.598.400', cashKeras: 'Rp 155.800.000', cashLunak: 'Rp 162.032.000' },
-      { tipe: 'Rumah Tipe 42/91', lantai: '1 Lantai', kamar: '2 Kamar Tidur', normal: 'Rp 344.624.000', cashKeras: 'Rp 238.000.000', cashLunak: 'Rp 247.520.000' },
-      { tipe: 'Rumah Tipe 60/98', lantai: '2 Lantai', kamar: '3 Kamar Tidur', normal: 'Rp 449.604.000', cashKeras: 'Rp 310.500.000', cashLunak: 'Rp 322.920.000' },
-    ],
-    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80',
-    brosurUrl: '/assets/brosur/wotu-islamic-village.pdf',
-    brosurFileName: 'Brosur-Wotu-Islamic-Village.pdf',
-    features: ['Rumah & Kavling', 'Lingkungan Islami', 'One Gate System', 'Cocok Investasi'],
-    order: 2,
-    isFeatured: false,
-  },
-  {
-    slug: 'hasanah-panakkukang',
-    name: 'The Hasanah Panakkukang',
-    desc: 'Hunian premium 2 lantai di jantung Makassar — hanya tersisa 2 unit eksklusif, lokasi tak ternilai, skema syariah tanpa bank.',
-    location: 'Panakkukang, Makassar',
-    locationDetail: 'Kompleks PAM, Jl. Penjernihan Raya III, Panakkukang, Makassar',
-    // LOGIKA: status 'Sisa Sedikit' untuk filter — display label menunjukkan 2 unit tersisa
-    status: 'Sisa Sedikit',
-    badge: 'BEST PREMIUM LOCATION',
-    statusLabel: 'Sisa 2 Unit!',
-    // LOGIKA: Harga promo sesuai Product Knowledge
-    harga: 'Mulai Rp 1,299 Miliar',
-    tipeUnit: [
-      { tipe: 'Tipe 70/82 (2 Lantai)', lantai: '2 Lantai', kamar: '3 Kamar Tidur + 2 KM', normal: 'Rp 1.399.000.000', cashKeras: 'Rp 1.299.000.000 (Promo)', cashLunak: 'DP 50% = Rp 699.500.000 (cicil s/d 3 tahun)' },
-    ],
-    image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&q=80',
-    brosurUrl: '/assets/brosur/hasanah-panakkukang.pdf',
-    brosurFileName: 'Brosur-Hasanah-Panakkukang.pdf',
-    features: ['Lokasi Premium', 'Lingkungan Islami', '2 Lantai 70 m²', 'Unit Terbatas'],
-    order: 3,
-    isFeatured: false,
-  },
-  {
-    slug: 'afkar-madani-estate',
-    name: 'Afkar Madani Estate',
-    desc: 'Perumahan eksklusif syariah terbaru AFKAR LAND. Grand Launching 7 Juni 2026 — daftarkan minat Anda & dapatkan penawaran Early Bird!',
-    location: 'BTP, Makassar',
-    locationDetail: 'AFKAR MADANI ESTATE BTP, Makassar — Segera hadir Juni 2026',
-    // LOGIKA: status 'Coming Soon' — grand launching 7 Juni 2026
-    status: 'Coming Soon',
-    badge: 'LAUNCHING JUNI',
-    statusLabel: '🚀 Grand Launching 7 Juni!',
-    harga: 'Segera Diumumkan',
-    tipeUnit: [],
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80',
-    brosurUrl: '/assets/brosur/afkar-madani-estate.pdf',
-    brosurFileName: 'Brosur-Afkar-Madani-Estate.pdf',
-    features: ['Grand Launching 7 Juni', 'Lingkungan Islami', 'SHM Aman', 'Eksklusif Premium'],
-    order: 4,
-    isFeatured: false,
-  },
-];
-
 // LOGIKA: Handler download brosur dengan feedback toast
+// ✅ SYNC: Sama persis dengan triggerDownload di ProjectDetail.jsx
 function triggerDownload(url, fileName, name) {
   const link = document.createElement('a');
   link.href = url;
@@ -143,6 +48,10 @@ function triggerDownload(url, fileName, name) {
 
 // ─────────────────────────────────────────────────────────────
 // CANVAS 2 — KOMPONEN PROJECT CARD
+// ✅ SYNC: Semua field disesuaikan dengan struktur data ProjectDetail.jsx
+//          Field yang dipakai: image, name, tagline, status, statusLabel,
+//          badge, location, locationDetail, harga, desc, features,
+//          brosurUrl, brosurFileName, slug, launchingDate
 // ─────────────────────────────────────────────────────────────
 
 function ProjectCard({ project, index }) {
@@ -176,15 +85,17 @@ function ProjectCard({ project, index }) {
         <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-[#111111]/20 to-transparent" />
 
         {/* COMING SOON overlay */}
+        {/* ✅ SYNC: launchingDate diambil dari Firestore, bukan hardcode */}
         {project.status === 'Coming Soon' && (
           <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2">
             <span className="text-white font-black text-sm uppercase tracking-widest px-4 py-2 border border-white/30 rounded-xl bg-black/40">
               🚀 Coming Soon
             </span>
-            {/* LOGIKA: Tampilkan tanggal launching untuk Afkar Madani */}
-            <span className="text-[#C9A84C] font-bold text-[10px] uppercase tracking-widest px-3 py-1 rounded-full bg-[#C9A84C]/10 border border-[#C9A84C]/30 animate-pulse">
-              Grand Launching 7 Juni 2026
-            </span>
+            {project.launchingDate && (
+              <span className="text-[#C9A84C] font-bold text-[10px] uppercase tracking-widest px-3 py-1 rounded-full bg-[#C9A84C]/10 border border-[#C9A84C]/30 animate-pulse">
+                Grand Launching {project.launchingDate}
+              </span>
+            )}
           </div>
         )}
 
@@ -195,7 +106,7 @@ function ProjectCard({ project, index }) {
             {project.badge}
           </span>
 
-          {/* LOGIKA: Badge Syariah baru — ikon glowing green premium */}
+          {/* LOGIKA: Badge Syariah glowing green premium */}
           <span className="
             inline-flex items-center gap-1 w-fit
             text-[9px] font-black px-2 py-1 rounded-full
@@ -209,7 +120,6 @@ function ProjectCard({ project, index }) {
               textShadow: '0 0 6px rgba(52,211,153,0.8)',
             }}
           >
-            {/* LOGIKA: Dot pulsing hijau sebagai indikator aktif */}
             <span className="relative flex h-1.5 w-1.5 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
@@ -218,9 +128,10 @@ function ProjectCard({ project, index }) {
           </span>
         </div>
 
-        {/* BADGE status kanan atas — tampil bila bukan Coming Soon */}
+        {/* BADGE status kanan atas */}
         {project.status === 'Sisa Sedikit' && (
           <div className="absolute top-3 right-3">
+            {/* ✅ SYNC: statusLabel dari Firestore */}
             <span className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-orange-600 text-white animate-pulse uppercase tracking-wider">
               {project.statusLabel || 'Sisa Sedikit!'}
             </span>
@@ -236,12 +147,13 @@ function ProjectCard({ project, index }) {
       </div>
 
       {/* ── KONTEN CARD ── */}
-      <div className="flex flex-col grow p-4 gap-2.5">
+      <div className="flex flex-col grow p-4 gap-2">
 
         {/* LOKASI */}
+        {/* ✅ SYNC: Pakai locationDetail jika ada, fallback ke location — sama dengan ProjectDetail */}
         <div className="flex items-center gap-1 text-[#C9A84C] text-[9px] font-bold tracking-widest uppercase">
           <FiMapPin size={8} />
-          {project.location}
+          {project.locationDetail || project.location}
         </div>
 
         {/* NAMA PROJECT */}
@@ -249,15 +161,26 @@ function ProjectCard({ project, index }) {
           {project.name}
         </h3>
 
+        {/* TAGLINE */}
+        {/* ✅ SYNC: Field tagline baru — ditampilkan di card jika ada, sama dengan hero ProjectDetail */}
+        {project.tagline && (
+          <p className="text-white/35 text-[10px] font-medium italic leading-snug -mt-0.5">
+            {project.tagline}
+          </p>
+        )}
+
         {/* HARGA */}
-        <p className={`font-bold text-xs leading-none ${project.status === 'Coming Soon' ? 'text-[#C9A84C]' : 'text-brand-primary'}`}>{project.harga}</p>
+        <p className={`font-bold text-xs leading-none ${project.status === 'Coming Soon' ? 'text-[#C9A84C]' : 'text-brand-primary'}`}>
+          {project.harga}
+        </p>
 
         {/* DESKRIPSI */}
         <p className="text-white/38 text-xs leading-relaxed line-clamp-2 grow">{project.desc}</p>
 
         {/* FITUR KECIL 2x2 */}
+        {/* ✅ SYNC: features array dari Firestore, sama dengan ProjectDetail */}
         <div className="grid grid-cols-2 gap-y-1 gap-x-2">
-          {project.features.map((f, i) => (
+          {(project.features || []).map((f, i) => (
             <div key={i} className="flex items-center gap-1 text-white/40 text-[9px]">
               <span className="w-1 h-1 rounded-full bg-[#C9A84C] shrink-0" />
               {f}
@@ -267,6 +190,7 @@ function ProjectCard({ project, index }) {
 
         <div className="border-t border-white/6 pt-2.5 flex flex-col gap-2">
           {/* CTA 1: Lihat Detail */}
+          {/* ✅ SYNC: Route /proyek/:slug — cocok dengan useParams di ProjectDetail */}
           <Link
             to={`/proyek/${project.slug}`}
             className="
@@ -282,6 +206,7 @@ function ProjectCard({ project, index }) {
           </Link>
 
           {/* CTA 2: Download Brosur */}
+          {/* ✅ SYNC: brosurUrl + brosurFileName dari Firestore */}
           <button
             onClick={() => triggerDownload(project.brosurUrl, project.brosurFileName, project.name)}
             className="
@@ -308,12 +233,41 @@ function ProjectCard({ project, index }) {
 
 export default function Projects() {
   const [activeFilter, setActiveFilter] = useState('Semua');
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // ── FETCH REALTIME DARI FIRESTORE ──
+  // ✅ SYNC: Struktur data yang difetch harus memiliki semua field yang dipakai
+  //         di ProjectDetail: name, image, tagline, status, statusLabel, badge,
+  //         location, locationDetail, harga, desc, features, brosurUrl,
+  //         brosurFileName, brosurSize, slug, about, aboutExtra, tipeUnit,
+  //         gallery, faq, progress, marketingIds, launchingDate, order
+  useEffect(() => {
+    const q = query(collection(db, 'projects'), orderBy('order', 'asc'));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setProjects(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setLoading(false);
+      },
+      () => {
+        // Fallback jika index belum dibuat
+        const unsub2 = onSnapshot(collection(db, 'projects'), (snap) => {
+          const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          data.sort((a, b) => (a.order || 0) - (b.order || 0));
+          setProjects(data);
+          setLoading(false);
+        });
+        return unsub2;
+      }
+    );
+    return () => unsub();
+  }, []);
 
   const filtered = useMemo(() => {
-    const sorted = [...projects].sort((a, b) => a.order - b.order);
-    if (activeFilter === 'Semua') return sorted;
-    return sorted.filter(p => p.status === activeFilter);
-  }, [activeFilter]);
+    if (activeFilter === 'Semua') return projects;
+    return projects.filter(p => p.status === activeFilter);
+  }, [activeFilter, projects]);
 
   return (
     <div className="w-full bg-[#080808] min-h-screen pb-20">
@@ -425,6 +379,8 @@ export default function Projects() {
               </p>
             </div>
 
+            {/* ✅ SYNC: Filter status harus cocok dengan nilai field status di Firestore
+                         Tersedia | Sisa Sedikit | Coming Soon — sama dengan ProjectDetail */}
             <div className="flex gap-1 bg-white/4 p-1 rounded-xl border border-white/7">
               {['Semua', 'Tersedia', 'Sisa Sedikit', 'Coming Soon'].map((f) => (
                 <button
@@ -445,22 +401,30 @@ export default function Projects() {
           </div>
 
           {/* GRID: 1 col mobile | 2 col tablet | 4 col desktop */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeFilter}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5"
-            >
-              {filtered.map((project, index) => (
-                <ProjectCard key={project.slug} project={project} index={index} />
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              {Array(4).fill(0).map((_, i) => (
+                <div key={i} className="bg-white/5 rounded-2xl aspect-[3/4] animate-pulse border border-white/5" />
               ))}
-            </motion.div>
-          </AnimatePresence>
+            </div>
+          ) : (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeFilter}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5"
+              >
+                {filtered.map((project, index) => (
+                  <ProjectCard key={project.slug || project.id} project={project} index={index} />
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          )}
 
-          {filtered.length === 0 && (
+          {!loading && filtered.length === 0 && (
             <p className="text-center text-white/20 text-sm py-14">
               Tidak ada project dengan filter ini saat ini.
             </p>
@@ -470,7 +434,6 @@ export default function Projects() {
 
       {/* ══════════════════════════════════════
           CTA SECTION BAWAH
-          Background: Gradient merah premium + gold accent
       ══════════════════════════════════════ */}
       <section className="pt-14">
         <div className="container mx-auto px-5 md:px-10">
@@ -514,7 +477,6 @@ export default function Projects() {
 
               {/* BUTTONS */}
               <div className="flex flex-wrap items-center justify-center gap-3">
-                {/* Tombol Utama: gold */}
                 <Link
                   to="/kontak"
                   className="
@@ -529,7 +491,6 @@ export default function Projects() {
                   <FiChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
                 </Link>
 
-                {/* Tombol Kedua: outline */}
                 <Link
                   to="/tim"
                   className="
@@ -552,7 +513,6 @@ export default function Projects() {
         </div>
       </section>
 
-      {/* AFKAR LAND */}
     </div>
   );
 }
