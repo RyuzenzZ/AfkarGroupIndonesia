@@ -492,7 +492,7 @@ export default function Projects() {
                 </Link>
 
                 <Link
-                  to="/tim"
+                  to="/kontak"
                   className="
                     inline-flex items-center gap-2 px-7 py-3
                     bg-white/8 hover:bg-white/14 text-white
